@@ -1,0 +1,4 @@
+#!/bin/sh
+# rebase 收尾（含冲突解决后 --continue）走这里
+[ "$1" = "rebase" ] || exit 0
+exec "$(dirname "$0")/_summary.sh"

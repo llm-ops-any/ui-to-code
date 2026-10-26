@@ -1,0 +1,3 @@
+#!/bin/sh
+# 干净合并（含 pull 的 fast-forward）后重建生成物
+exec "$(dirname "$0")/_summary.sh"

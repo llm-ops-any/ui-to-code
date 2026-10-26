@@ -1,0 +1,5 @@
+#!/bin/sh
+# 只有「合并提交」才重建（父提交数为 2）。
+# 为什么不用 post-merge：冲突解决后是 git commit 收尾，post-merge 不触发（2026-10-21 实测）。
+[ "$(git log -1 --pretty=%P | wc -w)" -eq 2 ] || exit 0
+exec "$(dirname "$0")/_summary.sh"
