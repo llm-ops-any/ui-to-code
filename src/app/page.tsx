@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import React, {useRef, useState} from 'react'
 import {useChat} from '@/hooks/useChat'
+import {ChatFile} from '@/models/chat'
 import PreviewComponent from '@/app/components/PreviewComponent'
 
 export default function Home() {
@@ -11,6 +12,8 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null) // 文件输入框的 ref
   const [imageUrl, setImageUrl] = useState<string>('')
+  // 已上传截图的附件信息，用于组装平台files字段(CR-16102700/FR-03)
+  const [imageFile, setImageFile] = useState<ChatFile | null>(null)
   const [suggestedContent, setSuggestedContent] = useState<string>('')
   const {loading: chatLoading, conversationId, endUserId, code, handleChat} = useChat()
 
@@ -31,10 +34,10 @@ export default function Home() {
     conversationId: string,
     suggestedContent: string,
     code: string,
-    image_urls: string[],
+    files: ChatFile[],
   ) => {
     // 3.1 判断是否存在原始UI图，并且不在加载中
-    if (image_urls.length === 0 || chatLoading) {
+    if (files.length === 0 || chatLoading) {
       alert('请确保原始图片已上传，并且当前无在生成代码')
       return
     }
@@ -45,12 +48,12 @@ export default function Home() {
     // 3.3 清空建议问题
     setSuggestedContent('')
 
-    // 3.4 调用hooks处理器获取数据
+    // 3.4 调用hooks处理器获取数据，附件以平台files字段传入(CR-16102700/FR-03)
     await handleChat({
       end_user_id: endUserId,
       conversation_id: conversationId,
       query: query,
-      image_urls: image_urls,
+      files: files,
     })
   }
 
@@ -82,12 +85,22 @@ export default function Home() {
       const data = await resp.json()
       setIsUploading(() => false)
       setImageUrl(data?.image_url)
+      // 组装平台附件信息(CR-16102700/FR-03)：上传接口已按图片真实类型返回name/mime/extension
+      const file: ChatFile = {
+        name: data?.name ?? 'screenshot.jpg',
+        url: data?.image_url,
+        kind: 'image',
+        mime: data?.mime ?? 'image/jpeg',
+        extension: data?.extension ?? 'jpg',
+        size: data?.size ?? 0,
+      }
+      setImageFile(() => file)
       await handleGenerateCode(
         endUserId,
         conversationId,
         '',
         '',
-        [data?.image_url],
+        [file],
       )
     } catch (error) {
       alert('上传错误')
@@ -121,13 +134,13 @@ export default function Home() {
         <div className="flex flex-col gap-3 mb-4">
           <button
             className="bg-gray-700 text-white h-8 text-[14px] rounded-lg cursor-pointer hover:bg-gray-800"
-            onClick={() => handleGenerateCode(endUserId, conversationId, suggestedContent, code, imageUrl ? [imageUrl] : [])}
+            onClick={() => handleGenerateCode(endUserId, conversationId, suggestedContent, code, imageFile ? [imageFile] : [])}
           >
             更新代码
           </button>
           <button
             className="bg-gray-700 text-white h-8 text-[14px] rounded-lg cursor-pointer hover:bg-gray-800"
-            onClick={() => handleGenerateCode(endUserId, conversationId, '', '', imageUrl ? [imageUrl] : [])}
+            onClick={() => handleGenerateCode(endUserId, conversationId, '', '', imageFile ? [imageFile] : [])}
           >
             重新生成代码
           </button>
