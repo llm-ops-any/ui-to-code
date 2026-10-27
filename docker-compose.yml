@@ -1,0 +1,18 @@
+# CR-16102702：本机部署入口，docker compose up -d --build
+services:
+  ui-to-code:
+    build: .
+    image: ui-to-code:0.1.0
+    container_name: ui-to-code
+    restart: unless-stopped
+    # 凭证运行时注入，不进镜像（NFR-01）
+    env_file:
+      - .env
+    environment:
+      # 容器内 localhost 指向容器自身，平台服务在宿主上，故覆盖 .env 里的地址（FR-05）
+      LLMOPS_API_BASE: ${CONTAINER_LLMOPS_API_BASE:-http://host.docker.internal/api/openapi}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      # 默认 3001，避开本地 dev 的 3000；冲突时改 APP_PORT
+      - '${APP_PORT:-3001}:3000'
